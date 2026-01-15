@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Vision | Image Classifier</title>
+    <title>AI Vision | ResNet18 Classifier</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;900&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
-            padding: 0;
             background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
             background-size: 400% 400%;
             animation: gradient 15s ease infinite;
@@ -18,6 +17,7 @@
             align-items: center;
             justify-content: center;
             font-family: 'Poppins', sans-serif;
+            color: white;
         }
 
         @keyframes gradient {
@@ -27,141 +27,184 @@
         }
 
         .glass-card {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 32px;
+            border-radius: 40px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 95%;
+            max-width: 800px;
+            position: relative;
+            overflow: hidden;
         }
 
-        .upload-area {
-            border: 3px dashed rgba(255, 255, 255, 0.4);
+        /* The Magic Container: No scrolling, perfect fit */
+        .image-display-area {
+            width: 100%;
+            height: 400px; /* Fixed height to keep UI stable */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 24px;
+            overflow: hidden;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+        }
+
+        #imagePreview {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Keeps aspect ratio, fits inside box */
+            display: none;
+        }
+
+        .btn-predict {
+            background: white;
+            color: #e73c7e;
             transition: all 0.3s ease;
-            cursor: pointer;
         }
 
-        .upload-area:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: #ffffff;
-            transform: scale(1.02);
+        .btn-predict:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            background: #fdfdfd;
         }
 
-        .upload-area.dragover {
+        .sample-btn {
+            position: absolute;
+            top: 25px;
+            right: 25px;
             background: rgba(255, 255, 255, 0.2);
-            border-color: #23d5ab;
-        }
-
-        .gradient-text {
-            background: linear-gradient(to right, #ffffff, #d1d5db);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .progress-fill {
-            transition: width 0.3s ease-in-out;
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            z-index: 10;
         }
     </style>
 </head>
 <body>
 
-    <div class="glass-card p-10 max-w-2xl w-full mx-4 text-white text-center">
+    <div class="glass-card p-8 md:p-12 text-center">
+        <button onclick="loadSample()" class="sample-btn px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-pink-600 transition-all">
+            🎲 Random Sample
+        </button>
+
         <div class="mb-8">
-            <h1 class="text-5xl font-extrabold mb-4 gradient-text uppercase tracking-tighter">AI Visual Predictor</h1>
-            <p class="text-xl font-medium opacity-90">
-                Detects: <span class="text-yellow-300">Planes • Cars • Cats • Dogs • Ships • deer • birds • frog • truck • horse</span>
+            <h1 class="text-4xl md:text-6xl font-black mb-2 tracking-tighter uppercase">AI Predictor</h1>
+            <p class="text-sm md:text-base opacity-70 font-medium uppercase tracking-widest">
+                Classifying: Plane • Car • Bird • Cat • Deer • Dog • Frog • Horse • Ship • Truck
             </p>
         </div>
 
-        <div id="dropZone" class="upload-area rounded-3xl p-12 mb-8 flex flex-col items-center justify-center relative overflow-hidden">
-            <input type="file" id="fileInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*">
+        <div id="dropZone" class="image-display-area mb-8 relative group">
+            <input type="file" id="fileInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" accept="image/*">
             
-            <div id="uploadPrompt" class="flex flex-col items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 mb-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span class="text-2xl font-semibold">Drop image here</span>
-                <span class="text-sm opacity-60 mt-2">or click to browse from files</span>
+            <div id="uploadPrompt" class="flex flex-col items-center group-hover:scale-110 transition-transform">
+                <div class="p-5 bg-white/10 rounded-full mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                </div>
+                <span class="text-xl font-bold">Tap to Upload Image</span>
+                <span class="text-xs opacity-50 uppercase mt-2 tracking-widest">or drag and drop</span>
             </div>
 
-            <img id="imagePreview" class="hidden absolute inset-0 w-full h-full object-cover rounded-2xl" />
+            <img id="imagePreview" src="" alt="preview">
         </div>
 
-        <div id="loadingUI" class="hidden mb-8">
-            <div class="flex justify-between mb-2">
-                <span class="text-sm font-bold uppercase tracking-widest">Processing Image</span>
-                <span id="progressPercent" class="text-sm font-bold">0%</span>
-            </div>
-            <div class="w-full bg-black/20 rounded-full h-4 overflow-hidden">
-                <div id="progressBar" class="bg-white h-full progress-fill" style="width: 0%"></div>
-            </div>
-        </div>
+        <div class="min-h-[120px] flex flex-col items-center justify-center">
+            
+            <button id="predictBtn" class="hidden btn-predict px-10 py-4 rounded-2xl text-lg font-black uppercase tracking-widest shadow-xl">
+                Start Prediction
+            </button>
 
-        <div id="result" class="hidden transform transition-all duration-500 scale-110">
-            <div class="bg-white/20 rounded-2xl py-6 px-4">
-                <p class="text-sm uppercase tracking-widest opacity-70 mb-1">Our AI predicts a...</p>
-                <h2 class="text-6xl font-black capitalize mb-2" id="predictionText"></h2>
-                <div class="inline-block px-4 py-1 bg-green-500 rounded-full text-sm font-bold" id="confidenceLabel">
-                    <span id="confidenceText"></span> Confidence
+            <div id="loadingUI" class="hidden w-full max-w-xs">
+                <div class="flex justify-between mb-2 font-bold text-xs uppercase tracking-widest">
+                    <span>Inference</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                    <div id="progressBar" class="bg-white h-full transition-all duration-300" style="width: 0%"></div>
                 </div>
             </div>
-            <button onclick="location.reload()" class="mt-6 text-sm underline opacity-50 hover:opacity-100">Reset and try another</button>
+
+            <div id="result" class="hidden animate-bounce-short">
+                <span class="text-xs font-bold opacity-60 uppercase tracking-widest">I am confident this is a</span>
+                <h2 class="text-6xl font-black capitalize leading-none" id="predictionText"></h2>
+                <div class="mt-2 text-yellow-300 font-bold text-xl" id="confidenceText"></div>
+            </div>
         </div>
     </div>
 
     <script>
         const fileInput = document.getElementById('fileInput');
-        const dropZone = document.getElementById('dropZone');
         const imagePreview = document.getElementById('imagePreview');
         const uploadPrompt = document.getElementById('uploadPrompt');
+        const predictBtn = document.getElementById('predictBtn');
         const loadingUI = document.getElementById('loadingUI');
         const progressBar = document.getElementById('progressBar');
         const progressPercent = document.getElementById('progressPercent');
         const resultDiv = document.getElementById('result');
 
-        // Drag and Drop Visual Feedback
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
-        });
+        let selectedFile = null;
 
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
-        });
+        async function loadSample() {
+            const samples = ['c1.jpg', 'c2.jpg', 'c3.jpg', 'c4.jpg'];
+            const randomSample = samples[Math.floor(Math.random() * samples.length)];
+            
+            try {
+                const response = await fetch(randomSample);
+                const blob = await response.blob();
+                selectedFile = new File([blob], randomSample, { type: "image/jpeg" });
+                
+                imagePreview.src = randomSample;
+                handlePreviewLogic();
+            } catch (e) {
+                alert("Please ensure c1.jpg, c2.jpg, c3.jpg, and c4.jpg are in your folder!");
+            }
+        }
 
-        fileInput.addEventListener('change', async (e) => {
+        fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
-            // Show Preview & Hide Prompt
+            selectedFile = file;
+            
             const reader = new FileReader();
             reader.onload = (event) => {
                 imagePreview.src = event.target.result;
-                imagePreview.classList.remove('hidden');
-                uploadPrompt.classList.add('hidden');
+                handlePreviewLogic();
             };
             reader.readAsDataURL(file);
+        });
 
-            // Prepare for Prediction
-            loadingUI.classList.remove('hidden');
+        function handlePreviewLogic() {
+            imagePreview.style.display = 'block';
+            uploadPrompt.style.display = 'none';
+            predictBtn.classList.remove('hidden');
             resultDiv.classList.add('hidden');
+            loadingUI.classList.add('hidden');
+        }
+
+        predictBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            predictBtn.classList.add('hidden');
+            loadingUI.classList.remove('hidden');
             
-            // Artificial progress bar for better UX
-            let progress = 0;
+            // Artificial progress steps
+            let p = 0;
             const interval = setInterval(() => {
-                progress += (100 - progress) * 0.1;
-                progressBar.style.width = `${progress}%`;
-                progressPercent.innerText = `${Math.round(progress)}%`;
-            }, 150);
+                p += (95 - p) * 0.1;
+                progressBar.style.width = p + '%';
+                progressPercent.innerText = Math.round(p) + '%';
+            }, 100);
 
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', selectedFile);
 
             try {
                 const response = await fetch('/predict', {
                     method: 'POST',
                     body: formData
                 });
-                
                 const data = await response.json();
                 
                 clearInterval(interval);
@@ -172,14 +215,14 @@
                     loadingUI.classList.add('hidden');
                     resultDiv.classList.remove('hidden');
                     document.getElementById('predictionText').innerText = data.prediction;
-                    document.getElementById('confidenceText').innerText = `${data.confidence}%`;
-                }, 600);
+                    document.getElementById('confidenceText').innerText = data.confidence + '% Match';
+                }, 500);
 
             } catch (error) {
-                console.error("Error:", error);
-                alert("Connection failed! Check if FastAPI server is running.");
-                clearInterval(interval);
+                alert("Backend Connection Error!");
                 loadingUI.classList.add('hidden');
+                predictBtn.classList.remove('hidden');
+                clearInterval(interval);
             }
         });
     </script>
