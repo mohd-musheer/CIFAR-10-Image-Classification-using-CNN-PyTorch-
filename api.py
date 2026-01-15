@@ -4,7 +4,7 @@ from torchvision import transforms
 from torchvision.models import resnet18
 from PIL import Image
 from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse,HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import io
 
@@ -51,3 +51,6 @@ async def predict(file: UploadFile = File(...)):
         "prediction": classes[predicted.item()],
         "confidence": round(confidence.item() * 100, 2)
     })
+@app.get("/", response_class=HTMLResponse)
+def home():
+    return open("index.html").read()
