@@ -4,6 +4,7 @@ from torchvision import transforms
 from torchvision.models import resnet18
 from PIL import Image
 from fastapi import FastAPI, File, UploadFile
+from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse,HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import io
@@ -29,7 +30,7 @@ transform = transforms.Compose([
 ])
 
 app = FastAPI()
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
